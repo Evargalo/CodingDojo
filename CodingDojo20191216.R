@@ -4,6 +4,7 @@ require(readr)
 require(purrr)
 require(janitor)
 
+# Lecture des données
 inputTest<- read_delim("CD2019test.txt", 
                                 ";", escape_double = FALSE, col_names = FALSE, 
                                 trim_ws = TRUE)
@@ -11,14 +12,16 @@ inputReal<- read_delim("CD2019.txt",
                        ";", escape_double = FALSE, col_names = FALSE, 
                        trim_ws = TRUE)
 
-
-inputTest->input
+# inputTest->input
 inputReal->input
 
-# Calcul du budget à la fin des vacances
+# Calcul du coût moyen par événement
+input %>% mutate(k=row_number()) %>% rowwise() %>% 
+  mutate(nbParticipants=ncol(input[k,] %>% remove_empty())-2) %>% 
+  mutate(avgPrice=X2/nbParticipants)-> input
 
+# Vecteur des vacanciers participants
 n<-ncol(input)
-
 vacanciers<-input$X1
 for( k in 3:n){
   var<-paste0("X",k)
@@ -28,14 +31,12 @@ vacanciers<-unique(vacanciers) %>% unlist
 vacanciers<-vacanciers[!is.na(vacanciers)]
 vacanciers<-as.character(unique(vacanciers))
 
+# Tableau du budget initialisé à zéro
 budget<-data.frame(vacancier=vacanciers)
 budget$credit<-0
-#budget$debit<-0
+#budget$debit<-0 # inutile, crédit négatif pour les débiteurs
 
-input %>% mutate(k=row_number()) %>% rowwise() %>% 
-  mutate(nbParticipants=ncol(input[k,] %>% remove_empty())-2) %>% 
-  mutate(avgPrice=X2/nbParticipants)-> input
-
+# Calcul du budget à la fin des vacances
 process<-function(line){
   budget2<-budget
   budget2$credit[budget2$vacancier==line$X1]<-budget2$credit[budget2$vacancier==line$X1]+line$X2
@@ -52,6 +53,7 @@ for( k in 1:nrow(input)){
 }
 
 budget %>% mutate(credit=round(credit,2))->budget
+# Contrôle
 sum(budget$credit)
 
 # Calculs des paiements à réaliser
@@ -80,6 +82,6 @@ while(any(budget$credit>limCentimes/100)){
   budget<-addPaiement(budget)
 }
 
-
+# Résultats
 paiements
 budget
